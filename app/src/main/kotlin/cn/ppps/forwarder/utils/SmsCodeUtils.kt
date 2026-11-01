@@ -19,7 +19,7 @@ object SmsCodeUtils {
     // 关键词（中英文常见表述）
     private val KEYWORD_REGEX = Regex(
         "(验证码|动态码|校验码|校驗碼|效验码|动态密码|动态密碼|提取码|激活码|激活碼|code|otp|verification|pin|password)",
-        RegexOption.IGNORECASE
+        RegexOption.IGNORE_CASE
     )
 
     // 4~8 位纯数字（最常见的验证码形态）
