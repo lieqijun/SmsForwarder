@@ -7,6 +7,7 @@ import cn.ppps.forwarder.database.entity.Rule
 import cn.ppps.forwarder.entity.MsgInfo
 import cn.ppps.forwarder.entity.setting.WebhookSetting
 import cn.ppps.forwarder.utils.AppUtils
+import cn.ppps.forwarder.utils.ClientCertUtils
 import cn.ppps.forwarder.utils.Log
 import cn.ppps.forwarder.utils.SendUtils
 import cn.ppps.forwarder.utils.SettingUtils
@@ -259,8 +260,29 @@ class WebhookUtils {
                 }
             }
 
-            request.ignoreHttpsCert() //忽略https证书
-                .retryCount(SettingUtils.requestRetryTimes) //超时重试的次数
+            //设置客户端证书(mTLS/双向认证)或忽略https证书
+            if (setting.clientCert.isNotEmpty() && setting.clientCertPassword.isNotEmpty()) {
+                try {
+                    val bksStream = ClientCertUtils.p12ToBksInputStream(setting.clientCert, setting.clientCertPassword)
+                    if (setting.serverCaCert.isNotEmpty()) {
+                        //校验服务端：系统CA + 用户提供的CA证书
+                        val caStream = ClientCertUtils.certInputStream(setting.serverCaCert)
+                        request.certificates(bksStream, setting.clientCertPassword, caStream)
+                    } else {
+                        //信任所有服务端证书(沿用历史 ignoreHttpsCert 行为)，宽松主机名校验以兼容自签/内网域名
+                        request.certificates(bksStream, setting.clientCertPassword)
+                        request.hostnameVerifier { _, _ -> true }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Log.e(TAG, "客户端证书加载失败: ${e.message}")
+                    throw Exception("客户端证书加载失败: ${e.message}")
+                }
+            } else {
+                request.ignoreHttpsCert() //忽略https证书
+            }
+
+            request.retryCount(SettingUtils.requestRetryTimes) //超时重试的次数
                 .retryDelay(SettingUtils.requestDelayTime * 1000) //超时重试的延迟时间
                 .retryIncreaseDelay(SettingUtils.requestDelayTime * 1000) //超时重试叠加延时
                 .timeStamp(true) //url自动追加时间戳，避免缓存
