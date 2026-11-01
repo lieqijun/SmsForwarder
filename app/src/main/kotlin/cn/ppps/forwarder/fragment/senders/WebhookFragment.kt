@@ -9,6 +9,14 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioGroup
+import android.os.Environment
+import cn.ppps.forwarder.utils.Base64
+import com.hjq.permissions.OnPermissionCallback
+import com.hjq.permissions.XXPermissions
+import com.hjq.permissions.permission.PermissionLists
+import com.hjq.permissions.permission.base.IPermission
+import java.io.File
+import java.io.FileInputStream
 import androidx.fragment.app.viewModels
 import com.google.gson.Gson
 import cn.ppps.forwarder.R
@@ -55,6 +63,7 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
     private val viewModel by viewModels<SenderViewModel> { BaseViewModelFactory(context) }
     private var mCountDownHelper: CountDownButtonHelper? = null
     private var headerItemMap = HashMap<Int, LinearLayout>(2)
+    private val downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
 
     @JvmField
     @AutoWired(name = KEY_SENDER_ID)
@@ -134,6 +143,9 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
                     binding!!.etSecret.setText(settingVo.secret)
                     binding!!.etResponse.setText(settingVo.response)
                     binding!!.etWebParams.setText(settingVo.webParams)
+                    binding!!.etClientCert.setText(settingVo.clientCert)
+                    binding!!.etClientCertPassword.setText(settingVo.clientCertPassword)
+                    binding!!.etServerCaCert.setText(settingVo.serverCaCert)
                     //set header
                     for ((key, value) in settingVo.headers) {
                         addHeaderItemLinearLayout(
@@ -158,6 +170,8 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
         binding!!.btnAddHeader.setOnClickListener {
             addHeaderItemLinearLayout(headerItemMap, binding!!.layoutHeaders, null, null)
         }
+        binding!!.btnClientCertPicker.setOnClickListener { pickCert(binding!!.etClientCert) }
+        binding!!.btnServerCaPicker.setOnClickListener { pickCert(binding!!.etServerCaCert) }
         binding!!.sbProxyAuthenticator.setOnCheckedChangeListener(this)
         binding!!.rgProxyType.setOnCheckedChangeListener { _: RadioGroup?, checkedId: Int ->
             if (checkedId == R.id.rb_proxyHttp || checkedId == R.id.rb_proxySocks) {
@@ -276,7 +290,11 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
             throw Exception(getString(R.string.invalid_username_or_password))
         }
 
-        return WebhookSetting(method, webServer, secret, response, webParams, headers, proxyType, proxyHost, proxyPort, proxyAuthenticator, proxyUsername, proxyPassword)
+        val clientCert = binding!!.etClientCert.text.toString().trim()
+        val clientCertPassword = binding!!.etClientCertPassword.text.toString().trim()
+        val serverCaCert = binding!!.etServerCaCert.text.toString().trim()
+
+        return WebhookSetting(method, webServer, secret, response, webParams, headers, proxyType, proxyHost, proxyPort, proxyAuthenticator, proxyUsername, proxyPassword, clientCert, clientCertPassword, serverCaCert)
     }
 
 
@@ -334,6 +352,65 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
     override fun onDestroyView() {
         if (mCountDownHelper != null) mCountDownHelper!!.recycle()
         super.onDestroyView()
+    }
+
+    //选择证书文件（客户端证书 / 服务端CA证书），选中后以其 Base64 存入输入框
+    private fun pickCert(etCert: EditText) {
+        XXPermissions.with(this)
+            .permission(PermissionLists.getManageExternalStoragePermission())
+            .request(object : OnPermissionCallback {
+                override fun onResult(grantedList: MutableList<IPermission>, deniedList: MutableList<IPermission>) {
+                    val allGranted = deniedList.isEmpty()
+                    if (!allGranted) {
+                        val doNotAskAgain = XXPermissions.isDoNotAskAgainPermissions(requireActivity(), deniedList)
+                        if (doNotAskAgain) {
+                            XToastUtils.error(R.string.toast_denied_never)
+                            XXPermissions.startPermissionActivity(requireContext(), deniedList)
+                        }
+                        XToastUtils.error(R.string.toast_denied)
+                        return
+                    }
+
+                    val fileList = findSupportedFiles(downloadPath)
+                    if (fileList.isEmpty()) {
+                        XToastUtils.error(String.format(getString(R.string.download_certificate_first), downloadPath))
+                        return
+                    }
+                    MaterialDialog.Builder(requireContext())
+                        .title(getString(R.string.keystore_base64))
+                        .content(String.format(getString(R.string.root_directory), downloadPath))
+                        .items(fileList)
+                        .itemsCallbackSingleChoice(0) { _: MaterialDialog?, _: View?, _: Int, text: CharSequence ->
+                            val webPath = "$downloadPath/$text"
+                            etCert.setText(convertCertToBase64String(webPath))
+                            true
+                        }
+                        .positiveText(R.string.select)
+                        .negativeText(R.string.cancel)
+                        .show()
+                }
+            })
+    }
+
+    private fun findSupportedFiles(directoryPath: String): List<String> {
+        val files = mutableListOf<String>()
+        val directory = File(directoryPath)
+        if (directory.exists() && directory.isDirectory) {
+            directory.listFiles()?.forEach { f ->
+                if (f.isFile && isSupportedFile(f)) files.add(f.name)
+            }
+        }
+        return files
+    }
+
+    private fun isSupportedFile(file: File): Boolean {
+        val supported = listOf("p12", "pfx", "pem", "crt", "cer", "der")
+        return supported.any { it.equals(file.extension, ignoreCase = true) }
+    }
+
+    private fun convertCertToBase64String(certFilePath: String): String {
+        val bytes = FileInputStream(certFilePath).readBytes()
+        return Base64.encode(bytes)
     }
 
 }
