@@ -37,24 +37,34 @@ jobs:
           repository: lieqijun/keystore
           token: ${{ secrets.TOKEN }} # 连接仓库的token,需要单独配置
           path: keystore # 仓库的根目录名
-      # 修正 keystore 内 alias 为 pppscn（CI 自带 JDK 提供 keytool，无需本机操作）
-      - name: Fix keystore alias to pppscn
+      # 修正 keystore 内 alias 为 lieqijun（CI 自带 JDK 提供 keytool，无需本机操作）
+      - name: Fix keystore alias to lieqijun
         run: |
-          KEYSTORE=keystore/pppscn.jks
           command -v keytool >/dev/null 2>&1 || export PATH="$JAVA_HOME/bin:$PATH"
-          # 从已 checkout 的 keystore.properties 读取密码（明文存储于私有仓库）
-          STORE_PASSWORD=$(grep -iE '^storePassword[[:space:]]*=' keystore/keystore.properties | head -1 | cut -d'=' -f2- | tr -d ' \r')
-          KEY_PASSWORD=$(grep -iE '^keyPassword[[:space:]]*=' keystore/keystore.properties | head -1 | cut -d'=' -f2- | tr -d ' \r')
+          PROPS=keystore/keystore.properties
+          STORE_PASSWORD=$(grep -iE '^storePassword[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
+          KEY_PASSWORD=$(grep -iE '^keyPassword[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
+          STORE_FILE=$(grep -iE '^storeFile[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
+          KEYSTORE="${STORE_FILE:-keystore/pppscn.jks}"
+          echo "Keystore: $KEYSTORE"
           echo "Current keystore entries:"
           keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>/dev/null | grep "PrivateKeyEntry" || true
           OLD_ALIAS=$(keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F',' '/PrivateKeyEntry/{print $1; exit}' | sed -E 's/[[:space:]]*\(.*//' | tr -d ' ')
-          echo "Detected alias: '$OLD_ALIAS'"
-          if [ -n "$OLD_ALIAS" ] && [ "$OLD_ALIAS" != "pppscn" ]; then
-            keytool -changealias -keystore "$KEYSTORE" -alias "$OLD_ALIAS" -destalias pppscn -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD"
-            echo "Alias changed -> pppscn"
+          NEW_ALIAS=lieqijun
+          if [ -n "$OLD_ALIAS" ] && [ "$OLD_ALIAS" != "$NEW_ALIAS" ]; then
+            keytool -changealias -keystore "$KEYSTORE" -alias "$OLD_ALIAS" -destalias "$NEW_ALIAS" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD"
+            echo "Alias changed -> $NEW_ALIAS"
           else
-            echo "Alias already pppscn or not detected, skip"
+            echo "Alias already $NEW_ALIAS or not detected, skip"
           fi
+          # 重写 properties，确保 Gradle 用新 alias 签名（不依赖私有仓库旧值）
+          {
+            echo "keyAlias=$NEW_ALIAS"
+            echo "storeFile=$KEYSTORE"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$PROPS"
+          echo "Rewrote $PROPS with keyAlias=$NEW_ALIAS"
       # 打包release
       - name: Build with Gradle
         run: bash ./gradlew assembleRelease
