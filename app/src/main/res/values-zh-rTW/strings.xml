@@ -351,6 +351,8 @@
     <string name="filtering_duplicate_messages_tips">0=禁用，判斷重複：類型+來源+內容</string>
     <string name="forward_sms">轉發簡訊廣播</string>
     <string name="forward_sms_tips">請授予讀取簡訊、通知類簡訊、發送簡訊等權限，關閉驗證碼保護</string>
+    <string name="auto_copy_sms_code">自動複製驗證碼到剪貼板</string>
+    <string name="auto_copy_sms_code_tips">收到含驗證碼的簡訊時，自動複製驗證碼到剪貼板（僅提取數字串）</string>
     <string name="sms_command">簡訊指令</string>
     <string name="sms_command_tips">根據簡訊指令開關對應功能，指令格式：smsf#功能名#動作名</string>
     <string name="close_to_earpiece_turn_off_screen">靠近聽筒關屏</string>

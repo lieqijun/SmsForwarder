@@ -39,6 +39,9 @@ const val PACKAGE_NAME = "cn.ppps.forwarder"
 //通用设置
 const val SP_ENABLE_SMS = "enable_sms"
 
+//收到含验证码的短信时，是否自动复制验证码到剪贴板
+const val SP_AUTO_COPY_SMS_CODE = "auto_copy_sms_code"
+
 const val SP_ENABLE_PHONE = "enable_phone"
 const val SP_ENABLE_CALL_TYPE_1 = "enable_call_type_1"
 const val SP_ENABLE_CALL_TYPE_2 = "enable_call_type_2"

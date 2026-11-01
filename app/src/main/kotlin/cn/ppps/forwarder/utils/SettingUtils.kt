@@ -19,6 +19,9 @@ class SettingUtils private constructor() {
         //是否转发短信
         var enableSms: Boolean by SharedPreference(SP_ENABLE_SMS, false)
 
+        //收到含验证码的短信时，是否自动复制验证码到剪贴板
+        var autoCopySmsCode: Boolean by SharedPreference(SP_AUTO_COPY_SMS_CODE, false)
+
         //是否转发通话
         var enablePhone: Boolean by SharedPreference(SP_ENABLE_PHONE, false)
 

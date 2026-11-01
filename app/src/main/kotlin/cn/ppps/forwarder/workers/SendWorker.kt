@@ -22,6 +22,7 @@ import cn.ppps.forwarder.utils.HistoryUtils
 import cn.ppps.forwarder.utils.Log
 import cn.ppps.forwarder.utils.SendUtils
 import cn.ppps.forwarder.utils.SettingUtils
+import cn.ppps.forwarder.utils.SmsCodeUtils
 import cn.ppps.forwarder.utils.TASK_CONDITION_APP
 import cn.ppps.forwarder.utils.TASK_CONDITION_CALL
 import cn.ppps.forwarder.utils.TASK_CONDITION_SMS
@@ -51,6 +52,16 @@ class SendWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 val msgInfo = Gson().fromJson(msgInfoJson, MsgInfo::class.java)
                 //【注意】卡槽id：-1=获取失败、0=卡槽1、1=卡槽2，但是 Rule 表里存的是 SIM1/SIM2
                 val simSlot = "SIM" + (msgInfo.simSlot + 1)
+
+                //收到含验证码的短信时，自动复制验证码到剪贴板（独立于转发开关，仅对短信类型生效）
+                if (msgInfo.type == "sms" && SettingUtils.autoCopySmsCode) {
+                    try {
+                        val copied = SmsCodeUtils.copySmsCodeToClipboard(applicationContext, msgInfo.content)
+                        Log.d(TAG, "auto copy sms code: $copied")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "auto copy sms code failed: ${e.message}")
+                    }
+                }
 
                 //自动任务处理逻辑
                 autoTaskProcess(msgInfo, msgInfoJson, simSlot)

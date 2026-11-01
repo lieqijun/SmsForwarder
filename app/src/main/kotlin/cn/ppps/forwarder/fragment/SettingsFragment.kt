@@ -141,6 +141,8 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding?>(), View.OnClickL
 
         //转发短信广播
         switchEnableSms(binding!!.sbEnableSms)
+        //自动复制验证码到剪贴板
+        switchAutoCopySmsCode(binding!!.sbAutoCopySmsCode)
         //转发通话记录
         switchEnablePhone(binding!!.sbEnablePhone, binding!!.scbCallType1, binding!!.scbCallType2, binding!!.scbCallType3, binding!!.scbCallType4, binding!!.scbCallType5, binding!!.scbCallType6)
         //转发应用通知
@@ -385,6 +387,15 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding?>(), View.OnClickL
             }
         }
         sbEnableSms.isChecked = SettingUtils.enableSms
+    }
+
+    //自动复制验证码到剪贴板
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    private fun switchAutoCopySmsCode(sbAutoCopySmsCode: SwitchButton) {
+        sbAutoCopySmsCode.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
+            SettingUtils.autoCopySmsCode = isChecked
+        }
+        sbAutoCopySmsCode.isChecked = SettingUtils.autoCopySmsCode
     }
 
     //转发通话
