@@ -18,6 +18,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       # 检出代码
       - uses: actions/checkout@v4
@@ -56,21 +58,14 @@ jobs:
       # 打包release
       - name: Build with Gradle
         run: bash ./gradlew assembleRelease
-      # 创建release
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 创建 Release 并上传 APK
+      # 用 softprops/action-gh-release 替代已废弃的 actions/create-release
+      # （create-release 会触发 url.parse 弃用告警，且对 token 权限较敏感）
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: SmsForwarder ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: SmsForwarder ${{ github.ref_name }}
           draft: false
           prerelease: false
-      # 上传至release的资源
-      - name: Upload release binaries
-        uses: alexellis/upload-assets@0.2.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          asset_paths: '["./app/build/outputs/apk/release/SmsF_*"]'
+          files: ./app/build/outputs/apk/release/SmsF_*
