@@ -216,6 +216,99 @@
             </LinearLayout>
 
             <LinearLayout
+                style="@style/BarStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/client_certificate"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/client_certificate_tips"
+                    android:textSize="@dimen/text_size_mini"
+                    tools:ignore="SmallSp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                        android:id="@+id/et_clientCert"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:hint="@string/optional"
+                        android:singleLine="true"
+                        app:met_clearButton="true"
+                        tools:ignore="TextContrastCheck,TouchTargetSizeCheck" />
+
+                    <Button
+                        android:id="@+id/btn_clientCertPicker"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/select_certificate"
+                        tools:ignore="ButtonStyle" />
+
+                </LinearLayout>
+
+                <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                    android:id="@+id/et_clientCertPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/client_cert_password"
+                    android:singleLine="true"
+                    app:met_passWordButton="true"
+                    tools:ignore="TextContrastCheck,TouchTargetSizeCheck" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/server_ca_certificate"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/server_ca_certificate_tips"
+                    android:textSize="@dimen/text_size_mini"
+                    tools:ignore="SmallSp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
+                        android:id="@+id/et_serverCaCert"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:hint="@string/optional"
+                        android:singleLine="true"
+                        app:met_clearButton="true"
+                        tools:ignore="TextContrastCheck,TouchTargetSizeCheck" />
+
+                    <Button
+                        android:id="@+id/btn_serverCaPicker"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/select_certificate"
+                        tools:ignore="ButtonStyle" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/layout_Headers"
                 style="@style/BarStyle"
                 android:layout_width="match_parent"
