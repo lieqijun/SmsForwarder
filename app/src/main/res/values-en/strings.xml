@@ -656,6 +656,12 @@
     <string name="webhook_secret">Secret: If left empty, the sign will not be calculated</string>
     <string name="webhook_response">Successful Response Keyword：If left empty, HTTP status 200 represents success</string>
     <string name="webhook_response2">Successful Response Keyword：Leaving it blank means sending is considered as successful.</string>
+    <string name="client_certificate">Client Certificate (mTLS)</string>
+    <string name="client_certificate_tips">PKCS#12 (.p12) client certificate for mutual TLS authentication</string>
+    <string name="client_cert_password">Certificate Password</string>
+    <string name="server_ca_certificate">Server CA Certificate (optional)</string>
+    <string name="server_ca_certificate_tips">Used to verify the server identity. Leave empty to trust all certificates</string>
+    <string name="select_certificate">Select</string>
     <string name="headers">Headers</string>
     <string name="header_key">Key</string>
     <string name="header_value">Value</string>
