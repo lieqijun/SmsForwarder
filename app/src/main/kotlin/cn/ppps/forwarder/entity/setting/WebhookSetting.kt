@@ -17,9 +17,9 @@ data class WebhookSetting(
     val proxyAuthenticator: Boolean = false,
     val proxyUsername: String = "",
     val proxyPassword: String = "",
-    //客户端证书(mTLS/双向认证)：PKCS#12(.p12)证书内容，以 "/" 开头为文件路径，否则为 Base64
+    //客户端证书(mTLS/双向认证)：经 Android Keystore 加密的 BKS 证书库(Base64)。
+    // 由导入时临时解密 PKCS#12 后重新封装得到；密码绝不持久化，运行时由 Keystore 密钥派生。
     val clientCert: String = "",
-    val clientCertPassword: String = "",
     //服务端CA证书(可选)：用于验证服务端身份；留空则信任所有证书(沿用历史 ignoreHttpsCert 行为)
     val serverCaCert: String = "",
 ) : Serializable {

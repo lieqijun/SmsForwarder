@@ -657,8 +657,10 @@
     <string name="webhook_secret">Secret：置空则不计算sign</string>
     <string name="client_certificate">客户端证书(mTLS)</string>
     <string name="client_certificate_tips">PKCS#12(.p12)客户端证书，用于双向TLS认证</string>
-    <string name="client_cert_password">证书密码</string>
+    <string name="client_cert_password">证书密码（仅导入时输入，不保存）</string>
     <string name="server_ca_certificate">服务端CA证书(可选)</string>
+    <string name="cert_imported_success">客户端证书已加密导入</string>
+    <string name="cert_import_failed">证书导入失败：%s</string>
     <string name="server_ca_certificate_tips">用于验证服务端身份，留空则信任所有证书</string>
     <string name="select_certificate">选择</string>
     <string name="webhook_response">成功应答关键字：置空则http状态200即为成功</string>

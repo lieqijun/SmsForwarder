@@ -1,6 +1,7 @@
 package cn.ppps.forwarder.fragment.senders
 
 import android.text.TextUtils
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,8 @@ import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.os.Environment
 import cn.ppps.forwarder.utils.Base64
+import cn.ppps.forwarder.utils.ClientCertCrypto
+import cn.ppps.forwarder.utils.ClientCertUtils
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import com.hjq.permissions.permission.PermissionLists
@@ -144,7 +147,6 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
                     binding!!.etResponse.setText(settingVo.response)
                     binding!!.etWebParams.setText(settingVo.webParams)
                     binding!!.etClientCert.setText(settingVo.clientCert)
-                    binding!!.etClientCertPassword.setText(settingVo.clientCertPassword)
                     binding!!.etServerCaCert.setText(settingVo.serverCaCert)
                     //set header
                     for ((key, value) in settingVo.headers) {
@@ -170,8 +172,8 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
         binding!!.btnAddHeader.setOnClickListener {
             addHeaderItemLinearLayout(headerItemMap, binding!!.layoutHeaders, null, null)
         }
-        binding!!.btnClientCertPicker.setOnClickListener { pickCert(binding!!.etClientCert) }
-        binding!!.btnServerCaPicker.setOnClickListener { pickCert(binding!!.etServerCaCert) }
+        binding!!.btnClientCertPicker.setOnClickListener { pickClientCert() }
+        binding!!.btnServerCaPicker.setOnClickListener { pickServerCa() }
         binding!!.sbProxyAuthenticator.setOnCheckedChangeListener(this)
         binding!!.rgProxyType.setOnCheckedChangeListener { _: RadioGroup?, checkedId: Int ->
             if (checkedId == R.id.rb_proxyHttp || checkedId == R.id.rb_proxySocks) {
@@ -291,10 +293,9 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
         }
 
         val clientCert = binding!!.etClientCert.text.toString().trim()
-        val clientCertPassword = binding!!.etClientCertPassword.text.toString().trim()
         val serverCaCert = binding!!.etServerCaCert.text.toString().trim()
 
-        return WebhookSetting(method, webServer, secret, response, webParams, headers, proxyType, proxyHost, proxyPort, proxyAuthenticator, proxyUsername, proxyPassword, clientCert, clientCertPassword, serverCaCert)
+        return WebhookSetting(method, webServer, secret, response, webParams, headers, proxyType, proxyHost, proxyPort, proxyAuthenticator, proxyUsername, proxyPassword, clientCert, serverCaCert)
     }
 
 
@@ -354,8 +355,22 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
         super.onDestroyView()
     }
 
-    //选择证书文件（客户端证书 / 服务端CA证书），选中后以其 Base64 存入输入框
-    private fun pickCert(etCert: EditText) {
+    //选择客户端证书(PKCS#12)：选中文件后再弹窗输入密码，校验通过后加密存盘（密码不持久化）
+    private fun pickClientCert() {
+        pickCertFile { p12Path -> showClientCertPasswordDialog(p12Path) }
+    }
+
+    //选择服务端CA证书：直接将证书内容以 Base64 存入输入框（CA 证书本身非机密）
+    private fun pickServerCa() {
+        pickCertFile { caPath ->
+            binding!!.etServerCaCert.setText(convertCertToBase64String(caPath))
+        }
+    }
+
+    /**
+     * 通用文件选择器：列出 Download 目录下支持的证书文件，选中后回调其完整路径。
+     */
+    private fun pickCertFile(onPicked: (path: String) -> Unit) {
         XXPermissions.with(this)
             .permission(PermissionLists.getManageExternalStoragePermission())
             .request(object : OnPermissionCallback {
@@ -381,8 +396,7 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
                         .content(String.format(getString(R.string.root_directory), downloadPath))
                         .items(fileList)
                         .itemsCallbackSingleChoice(0) { _: MaterialDialog?, _: View?, _: Int, text: CharSequence ->
-                            val webPath = "$downloadPath/$text"
-                            etCert.setText(convertCertToBase64String(webPath))
+                            onPicked("$downloadPath/$text")
                             true
                         }
                         .positiveText(R.string.select)
@@ -390,6 +404,46 @@ class WebhookFragment : BaseFragment<FragmentSendersWebhookBinding?>(), View.OnC
                         .show()
                 }
             })
+    }
+
+    /**
+     * 弹出密码输入框，输入 PKCS#12 密码后导入客户端证书。
+     * 密码仅用于临时解密，导入完成即丢弃，绝不写入配置。
+     */
+    private fun showClientCertPasswordDialog(p12Path: String) {
+        val input = EditText(requireContext())
+        input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        input.hint = getString(R.string.client_cert_password)
+        MaterialDialog.Builder(requireContext())
+            .title(R.string.client_certificate)
+            .customView(input, true)
+            .positiveText(R.string.select)
+            .negativeText(R.string.cancel)
+            .onPositive { _: MaterialDialog?, _: DialogAction? ->
+                importClientCert(p12Path, input.text.toString())
+            }
+            .show()
+    }
+
+    /**
+     * 导入客户端证书：校验密码 → 转 BKS → 用 Android Keystore 加密 → 写入输入框（Base64）。
+     */
+    private fun importClientCert(p12Path: String, p12Password: String) {
+        try {
+            val p12Bytes = FileInputStream(p12Path).readBytes()
+            // 先用密码校验能否打开，避免把错误密码下的数据加密存盘
+            ClientCertUtils.verifyP12(p12Bytes, p12Password)
+            val bksPassword = ClientCertCrypto.deriveBksPassword()
+            val bksBytes = ClientCertUtils.p12BytesToBksBytes(p12Bytes, p12Password, bksPassword)
+            val enc = ClientCertCrypto.encrypt(bksBytes)
+            binding!!.etClientCert.setText(Base64.encode(enc))
+            XToastUtils.success(getString(R.string.cert_imported_success))
+            Log.d(TAG, "client cert imported (encrypted), password not persisted")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e(TAG, "importClientCert: $e")
+            XToastUtils.error(getString(R.string.cert_import_failed, e.message ?: ""))
+        }
     }
 
     private fun findSupportedFiles(directoryPath: String): List<String> {

@@ -4,9 +4,11 @@ import android.annotation.SuppressLint
 import android.text.TextUtils
 import android.util.Base64
 import cn.ppps.forwarder.database.entity.Rule
+import java.io.ByteArrayInputStream
 import cn.ppps.forwarder.entity.MsgInfo
 import cn.ppps.forwarder.entity.setting.WebhookSetting
 import cn.ppps.forwarder.utils.AppUtils
+import cn.ppps.forwarder.utils.ClientCertCrypto
 import cn.ppps.forwarder.utils.ClientCertUtils
 import cn.ppps.forwarder.utils.Log
 import cn.ppps.forwarder.utils.SendUtils
@@ -261,16 +263,22 @@ class WebhookUtils {
             }
 
             //设置客户端证书(mTLS/双向认证)或忽略https证书
-            if (setting.clientCert.isNotEmpty() && setting.clientCertPassword.isNotEmpty()) {
+            if (setting.clientCert.isNotEmpty()) {
                 try {
-                    val bksStream = ClientCertUtils.p12ToBksInputStream(setting.clientCert, setting.clientCertPassword)
+                    // 存盘的是经 Android Keystore 加密的 BKS；解密后用派生密码交给 xhttp2，
+                    // 全程不涉及用户原始 PKCS#12 密码（密码仅在导入时临时使用，不落盘）
+                    val bksBytes = ClientCertCrypto.decrypt(
+                        cn.ppps.forwarder.utils.Base64.decode(setting.clientCert)
+                    )
+                    val bksPassword = ClientCertCrypto.deriveBksPassword()
+                    val bksStream = ByteArrayInputStream(bksBytes)
                     if (setting.serverCaCert.isNotEmpty()) {
                         //校验服务端：系统CA + 用户提供的CA证书
                         val caStream = ClientCertUtils.certInputStream(setting.serverCaCert)
-                        request.certificates(bksStream, setting.clientCertPassword, caStream)
+                        request.certificates(bksStream, bksPassword, caStream)
                     } else {
                         //信任所有服务端证书(沿用历史 ignoreHttpsCert 行为)，宽松主机名校验以兼容自签/内网域名
-                        request.certificates(bksStream, setting.clientCertPassword)
+                        request.certificates(bksStream, bksPassword)
                         request.hostnameVerifier { _, _ -> true }
                     }
                 } catch (e: Exception) {

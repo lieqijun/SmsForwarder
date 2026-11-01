@@ -259,14 +259,12 @@
 
                 </LinearLayout>
 
-                <com.xuexiang.xui.widget.edittext.materialedittext.MaterialEditText
-                    android:id="@+id/et_clientCertPassword"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/client_cert_password"
-                    android:singleLine="true"
-                    app:met_passWordButton="true"
-                    tools:ignore="TextContrastCheck,TouchTargetSizeCheck" />
+                    android:text="@string/client_cert_password"
+                    android:textSize="@dimen/text_size_mini"
+                    tools:ignore="SmallSp" />
 
                 <TextView
                     android:layout_width="match_parent"

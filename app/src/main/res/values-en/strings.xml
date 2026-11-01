@@ -658,8 +658,10 @@
     <string name="webhook_response2">Successful Response Keyword：Leaving it blank means sending is considered as successful.</string>
     <string name="client_certificate">Client Certificate (mTLS)</string>
     <string name="client_certificate_tips">PKCS#12 (.p12) client certificate for mutual TLS authentication</string>
-    <string name="client_cert_password">Certificate Password</string>
+    <string name="client_cert_password">Certificate Password (entered at import only, not stored)</string>
     <string name="server_ca_certificate">Server CA Certificate (optional)</string>
+    <string name="cert_imported_success">Client certificate imported (encrypted)</string>
+    <string name="cert_import_failed">Certificate import failed: %s</string>
     <string name="server_ca_certificate_tips">Used to verify the server identity. Leave empty to trust all certificates</string>
     <string name="select_certificate">Select</string>
     <string name="headers">Headers</string>
