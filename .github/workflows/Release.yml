@@ -44,27 +44,29 @@ jobs:
           PROPS=keystore/keystore.properties
           STORE_PASSWORD=$(grep -iE '^storePassword[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
           KEY_PASSWORD=$(grep -iE '^keyPassword[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
-          STORE_FILE=$(grep -iE '^storeFile[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
-          KEYSTORE="${STORE_FILE:-keystore/pppscn.jks}"
+          ORIG_STORE_FILE=$(grep -iE '^storeFile[[:space:]]*=' "$PROPS" | head -1 | cut -d'=' -f2- | tr -d ' \r')
+          # keystore 始终 checkout 到仓库根的 keystore/ 目录，直接在此定位 jks（不依赖 properties 里的相对路径）
+          KEYSTORE=$(ls keystore/*.jks 2>/dev/null | head -1)
           echo "Keystore: $KEYSTORE"
           echo "Current keystore entries:"
-          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>/dev/null | grep "PrivateKeyEntry" || true
-          OLD_ALIAS=$(keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F',' '/PrivateKeyEntry/{print $1; exit}' | sed -E 's/[[:space:]]*\(.*//' | tr -d ' ')
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>&1 | grep -i "PrivateKeyEntry" || true
+          OLD_ALIAS=$(keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" 2>/dev/null | grep -i "PrivateKeyEntry" | head -1 | cut -d',' -f1 | tr -d ' ')
           NEW_ALIAS=lieqijun
+          echo "Detected alias: '$OLD_ALIAS'"
           if [ -n "$OLD_ALIAS" ] && [ "$OLD_ALIAS" != "$NEW_ALIAS" ]; then
-            keytool -changealias -keystore "$KEYSTORE" -alias "$OLD_ALIAS" -destalias "$NEW_ALIAS" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD"
-            echo "Alias changed -> $NEW_ALIAS"
+            keytool -changealias -keystore "$KEYSTORE" -alias "$OLD_ALIAS" -destalias "$NEW_ALIAS" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" && echo "Alias changed -> $NEW_ALIAS"
           else
             echo "Alias already $NEW_ALIAS or not detected, skip"
           fi
-          # 重写 properties，确保 Gradle 用新 alias 签名（不依赖私有仓库旧值）
+          # 保持原 storeFile 的目录前缀，仅把文件名更新为实际 jks（兼容 root/app 两种解析方式）
+          STORE_FILE_REWRITE=$(dirname "$ORIG_STORE_FILE")/$(basename "$KEYSTORE")
           {
             echo "keyAlias=$NEW_ALIAS"
-            echo "storeFile=$KEYSTORE"
+            echo "storeFile=$STORE_FILE_REWRITE"
             echo "storePassword=$STORE_PASSWORD"
             echo "keyPassword=$KEY_PASSWORD"
           } > "$PROPS"
-          echo "Rewrote $PROPS with keyAlias=$NEW_ALIAS"
+          echo "Rewrote $PROPS with keyAlias=$NEW_ALIAS, storeFile=$STORE_FILE_REWRITE"
       # 打包release
       - name: Build with Gradle
         run: bash ./gradlew assembleRelease
