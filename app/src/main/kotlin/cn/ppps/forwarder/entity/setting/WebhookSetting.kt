@@ -17,6 +17,11 @@ data class WebhookSetting(
     val proxyAuthenticator: Boolean = false,
     val proxyUsername: String = "",
     val proxyPassword: String = "",
+    //客户端证书(mTLS/双向认证)：PKCS#12(.p12)证书内容，以 "/" 开头为文件路径，否则为 Base64
+    val clientCert: String = "",
+    val clientCertPassword: String = "",
+    //服务端CA证书(可选)：用于验证服务端身份；留空则信任所有证书(沿用历史 ignoreHttpsCert 行为)
+    val serverCaCert: String = "",
 ) : Serializable {
     fun getMethodCheckId(): Int {
         return when (method) {
